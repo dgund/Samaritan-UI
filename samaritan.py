@@ -28,7 +28,7 @@ class OutputTextUI(Frame):
 
         self.font = self._font_with_size(1)
         self.line_color = '#000000'
-        self.line_height_scale = .18
+        self.line_height_scale = .05
         self._text = ''
         self._line_width_min = 0
 
@@ -39,7 +39,7 @@ class OutputTextUI(Frame):
         self.line.pack()
 
     def layout_for_size(self, width, height):
-        line_height = max(height * line_height_scale, 1)
+        line_height = max(int(height * self.line_height_scale), 2)
         self.line.config(bg=self.line_color, height=line_height)
 
         label_height = height - line_height
