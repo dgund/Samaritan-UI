@@ -26,23 +26,38 @@ class OutputTextUI(Frame):
     def __init__(self, parent, *args, **kwargs):
         super(OutputTextUI, self).__init__(parent, *args, **kwargs)
 
-        self.label = tk.Label(self, text='SAMARITAN')
+        self.font = self._font_with_size(1)
+        self.line_color = '#000000'
+        self.line_height_scale = .18
+        self._text = ''
+        self._line_width_min = 0
+
+        self.label = tk.Label(self)
         self.label.pack()
 
-        self.line = tk.Canvas(self, bg='#000000', highlightthickness=0, borderwidth=0)
+        self.line = tk.Canvas(self, bg=self.line_color, highlightthickness=0, borderwidth=0)
         self.line.pack()
 
-    def textlabel_font_with_size(self, size):
-        return tkfont.Font(root=self, family='MagdaCleanMono', size=size, weight='bold')
-
     def layout_for_size(self, width, height):
-        line_height = 2
+        line_height = max(height * line_height_scale, 1)
+        self.line.config(bg=self.line_color, height=line_height)
 
         label_height = height - line_height
-        label_font = self.textlabel_font_with_size(label_height)
+        self.font = self._font_with_size(label_height)
 
-        self.line.config(height=line_height, width=width)
-        self.label.config(font=label_font)
+        self._line_width_min = label_height
+
+        self.set_text(self._text)
+
+    def set_text(self, text):
+        self._text = text
+        self.label.config(text=text, font=self.font)
+
+        line_width = max(self.font.measure(text), self._line_width_min)
+        self.line.config(width=line_width)
+
+    def _font_with_size(self, size):
+        return tkfont.Font(root=self, family='MagdaCleanMono', size=size, weight='bold')
 
 
 class OutputPromptUI(Frame):
@@ -54,11 +69,13 @@ class OutputPromptUI(Frame):
 
         self.canvas_shape = None
 
+        self.color = '#ff0023'
+
     def layout_for_size(self, width, height):
         self.canvas.config(width=width, height=height)
-        self.update_canvas_for_size(width, height)
+        self._update_canvas_for_size(width, height)
 
-    def update_canvas_for_size(self, width, height):
+    def _update_canvas_for_size(self, width, height):
         if self.canvas_shape:
             self.canvas.delete(self.canvas_shape)
             self.canvas_shape = None
@@ -70,7 +87,7 @@ class OutputPromptUI(Frame):
         v0 = (x_center, 0)
         v1 = (x_center - prompt_width//2, prompt_height)
         v2 = (x_center + prompt_width//2, prompt_height)
-        self.canvas_shape = self.canvas.create_polygon(v0, v1, v2, fill='#ff0023')
+        self.canvas_shape = self.canvas.create_polygon(v0, v1, v2, fill=self.color)
 
 
 class OutputUI(Frame):
