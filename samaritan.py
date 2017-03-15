@@ -13,71 +13,105 @@
 import tkinter as tk
 import tkinter.font as tkfont
 
-class OutputDisplay(tk.Frame):
+class Frame(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
-        tk.Frame.__init__(self, parent, *args, **kwargs)
+        super(Frame, self).__init__(parent, *args, **kwargs)
         self.parent = parent
 
-        # Label for displaying output text
-        self.textlabel = tk.Label(self, text='SAMARITAN')
-        self.textlabel.pack(fill='x', expand=True)
+    def layout_for_size(width, height):
+        raise NotImplementedError()
 
-        # Underline for the text
-        self.textline = tk.Canvas(self, bg='#000000', height=2, highlightthickness=0, borderwidth=0)
-        self.textline.pack(pady=7, fill='x', expand=True)
 
-        # Prompt triangle
-        self.prompt = tk.Canvas(self, highlightthickness=0, borderwidth=0)
-        self.prompt.pack(fill='x', expand=True)
-        self.prompt.bind('<Configure>', self.event_resize_prompt)
+class OutputTextUI(Frame):
+    def __init__(self, parent, *args, **kwargs):
+        super(OutputTextUI, self).__init__(parent, *args, **kwargs)
+
+        self.label = tk.Label(self, text='SAMARITAN')
+        self.label.pack()
+
+        self.line = tk.Canvas(self, bg='#000000', highlightthickness=0, borderwidth=0)
+        self.line.pack()
 
     def textlabel_font_with_size(self, size):
         return tkfont.Font(root=self, family='MagdaCleanMono', size=size, weight='bold')
 
     def layout_for_size(self, width, height):
-        # Textline attributes
-        textline_height = 2
+        line_height = 2
 
-        # Textlabel attributes
-        half_height = (height - textline_height) // 2
-        textlabel_height = max(half_height, 25)
-        textlabel_font = self.textlabel_font_with_size(textlabel_height)
+        label_height = height - line_height
+        label_font = self.textlabel_font_with_size(label_height)
 
-        # Prompt attributes
-        prompt_height = textlabel_height
+        self.line.config(height=line_height, width=width)
+        self.label.config(font=label_font)
 
-        self.textline.config(height=textline_height, width=width)
-        self.textlabel.config(font=textlabel_font)
-        self.prompt.config(height=prompt_height, width=width)
 
-    def event_resize_prompt(self, event):
-        self.prompt.delete('all')
-        x_center = event.width // 2
-        prompt_height = event.height
+class OutputPromptUI(Frame):
+    def __init__(self, parent, *args, **kwargs):
+        super(OutputPromptUI, self).__init__(parent, *args, **kwargs)
+
+        self.canvas = tk.Canvas(self, highlightthickness=0, borderwidth=0)
+        self.canvas.pack(fill='both', expand=True)
+
+        self.canvas_shape = None
+
+    def layout_for_size(self, width, height):
+        self.canvas.config(width=width, height=height)
+        self.update_canvas_for_size(width, height)
+
+    def update_canvas_for_size(self, width, height):
+        if self.canvas_shape:
+            self.canvas.delete(self.canvas_shape)
+            self.canvas_shape = None
+
+        x_center = width // 2
+        prompt_height = height
         prompt_width = int((4 / 3) * prompt_height)
 
         v0 = (x_center, 0)
         v1 = (x_center - prompt_width//2, prompt_height)
         v2 = (x_center + prompt_width//2, prompt_height)
-        self.prompt.create_polygon(v0, v1, v2, fill='#ff0023')
+        self.canvas_shape = self.canvas.create_polygon(v0, v1, v2, fill='#ff0023')
 
 
-class SamaritanUI(tk.Frame):
+class OutputUI(Frame):
     def __init__(self, parent, *args, **kwargs):
-        tk.Frame.__init__(self, parent, *args, **kwargs)
-        self.parent = parent
+        super(OutputUI, self).__init__(parent, *args, **kwargs)
+
+        self.text = OutputTextUI(self)
+        self.prompt = OutputPromptUI(self)
+
+        self.text.pack(pady=5)
+        self.prompt.pack()
+
+    def layout_for_size(self, width, height):
+        height_text = int(height * .6)
+        height_prompt = int(height * .4)
+        self.text.layout_for_size(width, height_text)
+        self.prompt.layout_for_size(width, height_prompt)
+
+
+class SamaritanUI(Frame):
+    def __init__(self, parent, *args, **kwargs):
+        super(SamaritanUI, self).__init__(parent, *args, **kwargs)
         self.bind('<Configure>', self.event_resize)
 
-        self.output_display = OutputDisplay(self)
-        self.output_display.place(in_=self, anchor='c', relx=.5, rely=.5)
+        self.output = OutputUI(self)
+        self.output.place(in_=self, anchor='c', relx=.5, rely=.5)
+
+        self.output_width_scale = .1
+        self.output_height_scale = .1
+        self.output_width_min = 80
+        self.output_height_min = 60
 
     def event_resize(self, event):
         self.layout_for_size(event.width, event.height)
 
     def layout_for_size(self, width, height):
-        output_display_width = width // 10
-        output_display_height = height // 10
-        self.output_display.layout_for_size(output_display_width, output_display_height)
+        output_width = max(int(width * self.output_width_scale),
+                           self.output_width_min)
+        output_height = max(int(height * self.output_height_scale),
+                            self.output_height_min)
+        self.output.layout_for_size(output_width, output_height)
 
 
 if __name__ == '__main__':
