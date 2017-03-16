@@ -13,6 +13,25 @@
 import tkinter as tk
 import tkinter.font as tkfont
 
+def rgb_to_hex(rgb_val):
+    return '#{:02x}{:02x}{:02x}'.format(rgb_val[0], rgb_val[1], rgb_val[2])
+
+def hex_to_rgb(hex_val):
+    hex_val = hex_val.lstrip('#')
+    lv = len(hex_val)
+    return tuple(int(hex_val[i:i+lv//3], 16) for i in range(0, lv, lv//3))
+
+def blend_colors(foreground, opacity, background):
+    (r1, g1, b1) = hex_to_rgb(foreground)
+    (r2, g2, b2) = hex_to_rgb(background)
+
+    r = int(r1 * opacity + r2 * (1 - opacity))
+    g = int(g1 * opacity + g2 * (1 - opacity))
+    b = int(b1 * opacity + b2 * (1 - opacity))
+    rgb_result = (r, g, b)
+
+    return rgb_to_hex(rgb_result)
+
 class Frame(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         super(Frame, self).__init__(parent, *args, **kwargs)
@@ -71,14 +90,42 @@ class OutputPromptUI(Frame):
 
         self.color = '#ff0023'
 
+        self._blink = False
+        self._blink_color = self.color
+        self._blink_opacity = 1.0
+
     def layout_for_size(self, width, height):
         self.canvas.config(width=width, height=height)
         self._update_canvas_for_size(width, height)
+
+    def start_blinking(self):
+        if not self._blink:
+            self._blink = True
+            self._timer_blink()
+
+    def stop_blinking(self):
+        if self._blink:
+            self._blink = False
+            self._timer_blink()
+
+    def _timer_blink(self):
+        if self._blink:
+            self._blink_opacity -= .10
+            if self._blink_opacity < -1.0:
+                self._blink_opacity = 1.0
+            self._blink_color = blend_colors(self.color, abs(self._blink_opacity), '#ffffff')
+            self.canvas.after(30, self._timer_blink)
+        else:
+            self._blink_opacity = 1.0
+            self._blink_color = self.color
+        self.canvas.itemconfig(self.canvas_shape, fill=self._blink_color)
 
     def _update_canvas_for_size(self, width, height):
         if self.canvas_shape:
             self.canvas.delete(self.canvas_shape)
             self.canvas_shape = None
+
+        prompt_color = self._blink_color if self._blink else self.color
 
         x_center = width // 2
         prompt_height = height
@@ -87,7 +134,7 @@ class OutputPromptUI(Frame):
         v0 = (x_center, 0)
         v1 = (x_center - prompt_width//2, prompt_height)
         v2 = (x_center + prompt_width//2, prompt_height)
-        self.canvas_shape = self.canvas.create_polygon(v0, v1, v2, fill=self.color)
+        self.canvas_shape = self.canvas.create_polygon(v0, v1, v2, fill=prompt_color)
 
 
 class OutputUI(Frame):
@@ -114,6 +161,7 @@ class SamaritanUI(Frame):
 
         self.output = OutputUI(self)
         self.output.place(in_=self, anchor='c', relx=.5, rely=.5)
+        self.output.prompt.start_blinking()
 
         self.output_width_scale = .1
         self.output_height_scale = .1
