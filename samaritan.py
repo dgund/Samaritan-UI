@@ -12,6 +12,9 @@
 
 import tkinter as tk
 import tkinter.font as tkfont
+import queue
+import threading
+import time
 
 def rgb_to_hex(rgb_val):
     return '#{:02x}{:02x}{:02x}'.format(rgb_val[0], rgb_val[1], rgb_val[2])
@@ -159,6 +162,8 @@ class SamaritanUI(Frame):
         super(SamaritanUI, self).__init__(parent, *args, **kwargs)
         self.bind('<Configure>', self.event_resize)
 
+        self.queue = queue.Queue()
+
         self.output = OutputUI(self)
         self.output.place(in_=self, anchor='c', relx=.5, rely=.5)
         self.output.prompt.start_blinking()
@@ -167,6 +172,8 @@ class SamaritanUI(Frame):
         self.output_height_scale = .1
         self.output_width_min = 80
         self.output_height_min = 60
+
+        self._check_queue()
 
     def event_resize(self, event):
         self.layout_for_size(event.width, event.height)
@@ -178,10 +185,38 @@ class SamaritanUI(Frame):
                             self.output_height_min)
         self.output.layout_for_size(output_width, output_height)
 
+    def _check_queue(self):
+        try:
+            text = self.queue.get(0)
+            self.output.text.set_text(text)
+            self.parent.after(1000, self._check_queue)
+        except queue.Empty:
+            self.parent.after(1000, self._check_queue)
+
+    def add_text(self, text):
+        self.queue.put(text)
+
+class BackgroundTask(threading.Thread):
+    def __init__(self, queue):
+        threading.Thread.__init__(self)
+        self.queue = queue
+
+    def run(self):
+        while True:
+            time.sleep(7)
+            self.queue.put("WHAT")
+            self.queue.put("ARE")
+            self.queue.put("YOUR")
+            self.queue.put("COMMANDS")
+            self.queue.put("?")
 
 if __name__ == '__main__':
     root = tk.Tk()
     root.title('Samaritan')
     root.geometry('800x600')
-    SamaritanUI(root).pack(fill='both', expand=True)
+    ui = SamaritanUI(root)
+    ui.pack(fill='both', expand=True)
+    task = BackgroundTask(ui.queue)
+    task.daemon = True
+    task.start()
     root.mainloop()
